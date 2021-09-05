@@ -1,0 +1,6 @@
+data/
+figs/
+models/
+result/
+**/__pycache__/
+*.ipynb
