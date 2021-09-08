@@ -47,7 +47,7 @@ def show_plot(points):
     loc = ticker.MultipleLocator(base=0.2) # put ticks at regular intervals
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
-    points = np.save('./figs/loss_{}.npy'.format(MODEL_NAME), np.array(points))
-    plt.savefig(os.path.join(FIG_DIR, 'loss_{}.png'.format(MODEL_NAME)))
+    points = np.save('./figs/loss_{}{}.npy'.format(MODEL_NAME, MODEL_ADD_NAME), np.array(points))
+    plt.savefig(os.path.join(FIG_DIR, 'loss_{}{}.png'.format(MODEL_NAME, MODEL_ADD_NAME)))
 
 # split_dataset()
