@@ -6,9 +6,10 @@ MODEL_NAME = 'gru'
 SAVE_DIR = './models'
 DATA_DIR = './data'
 FIG_DIR = './figs'
+MODEL_ADD_NAME = ''
 
 # Configuring training
-n_epochs = 100000
+n_epochs = 150000
 plot_every = 200
 print_every = 1000
 learning_rate = 0.0001

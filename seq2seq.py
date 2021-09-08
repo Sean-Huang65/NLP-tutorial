@@ -237,11 +237,11 @@ for epoch in range(1, n_epochs + 1):
 
 if not os.path.exists(SAVE_DIR):
     os.mkdir(SAVE_DIR)
-torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME))
-torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME))
+torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME))
+torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME))
 
-# encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME)))
-# decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME)))
+# encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME)))
+# decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME)))
 
 show_plot(plot_losses)
 evaluate_randomly()

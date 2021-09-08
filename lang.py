@@ -71,7 +71,7 @@ def read_langs(lang1, lang2, reverse=False):
     return input_lang, output_lang, pairs
 
 def filter_pair(p):
-    return len(p[1].split(' ')) < MAX_LENGTH
+    return len(p[1].split(' ')) < MAX_LENGTH and len(p[0]) < MAX_LENGTH + 10
 
 def filter_pairs(pairs):
     return [pair for pair in pairs if filter_pair(pair)]
