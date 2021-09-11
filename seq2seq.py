@@ -12,7 +12,7 @@ from tqdm import tqdm
 import os
 from nltk.translate.bleu_score import corpus_bleu
 
-from model import EncoderRNN, DecoderRNN
+from model import EncoderRNN, DecoderRNN, biEncoderGRU
 from config import *
 from utils import time_since, show_plot
 from lang import prepare_data, normalize_string, variables_from_pair, variable_from_sentence
@@ -43,6 +43,9 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
         encoder_hidden = encoder.init_hidden()
         encoder_outputs, encoder_hidden = encoder(input_variable, encoder_hidden)
     elif MODEL_NAME == 'lstm':
+        encoder_hidden = encoder.init_hidden()
+        encoder_outputs, encoder_hidden = encoder(input_variable, encoder_hidden)
+    else:
         encoder_hidden = encoder.init_hidden()
         encoder_outputs, encoder_hidden = encoder(input_variable, encoder_hidden)
     # Prepare input and output variables
@@ -186,8 +189,12 @@ def evaluate_randomly():
 
 
 # Initialize models
-encoder = EncoderRNN(input_lang.n_words, hidden_size, n_layers, model_name=MODEL_NAME)
-decoder = DecoderRNN(hidden_size, output_lang.n_words, n_layers, dropout_p=dropout_p, model_name=MODEL_NAME)
+if MODEL_NAME == 'bigru':
+    encoder = biEncoderGRU(input_lang.n_words, hidden_size, n_layers)
+    decoder = DecoderRNN(hidden_size, output_lang.n_words, n_layers, dropout_p=dropout_p, model_name='gru')
+else:
+    encoder = EncoderRNN(input_lang.n_words, hidden_size, n_layers, model_name=MODEL_NAME)
+    decoder = DecoderRNN(hidden_size, output_lang.n_words, n_layers, dropout_p=dropout_p, model_name=MODEL_NAME)
 
 # Move models to GPU
 if USE_CUDA:
