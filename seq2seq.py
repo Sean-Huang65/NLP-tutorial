@@ -12,7 +12,7 @@ from tqdm import tqdm
 import os
 from nltk.translate.bleu_score import corpus_bleu
 
-from model import EncoderRNN, DecoderRNN, biEncoderGRU
+from model import AttnDecoderRNN, EncoderRNN, DecoderRNN, biEncoderGRU
 from config import *
 from utils import time_since, show_plot
 from lang import prepare_data, normalize_string, variables_from_pair, variable_from_sentence
@@ -87,6 +87,55 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
     encoder_optimizer.step()
     decoder_optimizer.step()
     
+    return loss.item() / target_length
+
+def train_attn(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion):
+    encoder_hidden = encoder.init_hidden()
+    encoder_optimizer.zero_grad()
+    decoder_optimizer.zero_grad()
+    input_length = input_tensor.size(0)
+    target_length = target_tensor.size(0)
+
+    encoder_outputs = torch.zeros(MAX_LENGTH, encoder.hidden_size).cuda() # SOS, EOS
+
+    loss = 0
+
+    for ei in range(input_length):
+        encoder_output, encoder_hidden = encoder(
+            input_tensor[ei], encoder_hidden)
+        encoder_outputs[ei] = encoder_output[0, 0]
+
+    decoder_input = torch.tensor([[SOS_token]]).cuda()
+
+    decoder_hidden = encoder_hidden
+
+    use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
+
+    if use_teacher_forcing:
+        # Teacher forcing: Feed the target as the next input
+        for di in range(target_length):
+            decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            loss += criterion(decoder_output, target_tensor[di])
+            decoder_input = target_tensor[di]  # Teacher forcing
+
+    else:
+        # Without teacher forcing: use its own predictions as the next input
+        for di in range(target_length):
+            decoder_output, decoder_hidden, decoder_attention = decoder(
+                decoder_input, decoder_hidden, encoder_outputs)
+            topv, topi = decoder_output.topk(1)
+            decoder_input = topi.squeeze().detach()  # detach from history as input
+
+            loss += criterion(decoder_output, target_tensor[di])
+            if decoder_input.item() == EOS_token:
+                break
+
+    loss.backward()
+
+    encoder_optimizer.step()
+    decoder_optimizer.step()
+
     return loss.item() / target_length
 
 
@@ -194,6 +243,9 @@ def evaluate_randomly():
 if MODEL_NAME == 'bigru':
     encoder = biEncoderGRU(input_lang.n_words, hidden_size, n_layers)
     decoder = DecoderRNN(hidden_size, output_lang.n_words, n_layers, dropout_p=dropout_p, model_name='gru')
+elif MODEL_NAME == 'attn':
+    encoder = EncoderRNN(input_lang.n_words, hidden_size, n_layers, model_name='gru')
+    decoder = AttnDecoderRNN(hidden_size, output_lang.n_words, dropout_p=dropout_p, max_length=MAX_LENGTH)
 else:
     encoder = EncoderRNN(input_lang.n_words, hidden_size, n_layers, model_name=MODEL_NAME)
     decoder = DecoderRNN(hidden_size, output_lang.n_words, n_layers, dropout_p=dropout_p, model_name=MODEL_NAME)
@@ -217,42 +269,45 @@ print_loss_total = 0 # Reset every print_every
 plot_loss_total = 0 # Reset every plot_every
 
 # # Begin!
-# for epoch in range(1, n_epochs + 1):
+for epoch in range(1, n_epochs + 1):
     
-#     # Get training data for this cycle
-#     training_pair = variables_from_pair(random.choice(pairs), input_lang, output_lang)
-#     input_variable = training_pair[0]
-#     target_variable = training_pair[1]
+    # Get training data for this cycle
+    training_pair = variables_from_pair(random.choice(pairs), input_lang, output_lang)
+    input_variable = training_pair[0]
+    target_variable = training_pair[1]
 
-#     # Run the train function
-#     loss = train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
+    # Run the train function
+    if MODEL_NAME == 'attn':
+        loss = train_attn(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
+    else:
+        loss = train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
 
-#     # Keep track of loss
-#     print_loss_total += loss
-#     plot_loss_total += loss
+    # Keep track of loss
+    print_loss_total += loss
+    plot_loss_total += loss
 
-#     if epoch == 0: continue
+    if epoch == 0: continue
 
-#     if epoch % print_every == 0:
-#         print_loss_avg = print_loss_total / print_every
-#         print_loss_total = 0
-#         print_summary = '%s (%d %d%%) %.4f' % (time_since(start, epoch / n_epochs), epoch, epoch / n_epochs * 100, print_loss_avg)
-#         print(print_summary)
+    if epoch % print_every == 0:
+        print_loss_avg = print_loss_total / print_every
+        print_loss_total = 0
+        print_summary = '%s (%d %d%%) %.4f' % (time_since(start, epoch / n_epochs), epoch, epoch / n_epochs * 100, print_loss_avg)
+        print(print_summary)
 
-#     if epoch % plot_every == 0:
-#         plot_loss_avg = plot_loss_total / plot_every
-#         plot_losses.append(plot_loss_avg)
-#         plot_loss_total = 0
+    if epoch % plot_every == 0:
+        plot_loss_avg = plot_loss_total / plot_every
+        plot_losses.append(plot_loss_avg)
+        plot_loss_total = 0
 
-# if not os.path.exists(SAVE_DIR):
-#     os.mkdir(SAVE_DIR)
-# torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME))
-# torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME))
+if not os.path.exists(SAVE_DIR):
+    os.mkdir(SAVE_DIR)
+torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME))
+torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME))
 
-encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME)))
-decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME)))
+# encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME)))
+# decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME)))
 
-# show_plot(plot_losses)
+show_plot(plot_losses)
 evaluate_randomly()
 valid()
 # test()

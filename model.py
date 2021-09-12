@@ -99,6 +99,7 @@ class biEncoderGRU(nn.Module):
         seq_len = len(word_inputs)
         embedded = self.embedding(word_inputs).view(seq_len, 1, -1)
         output, hidden = self.rnn(embedded, hidden)
+        output = output.reshape(1, self.hidden_size * 2)
         hidden = hidden.reshape(self.n_layers, 1, self.hidden_size * 2)
         return output, hidden
 
@@ -111,18 +112,19 @@ class biEncoderGRU(nn.Module):
 
 
 class AttnDecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size, dropout_p=0.1, max_length=MAX_LENGTH):
+    def __init__(self, hidden_size, output_size, n_layers=2, dropout_p=0.1, max_length=None):
         super(AttnDecoderRNN, self).__init__()
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.dropout_p = dropout_p
         self.max_length = max_length
+        self.n_layers = n_layers
 
         self.embedding = nn.Embedding(self.output_size, self.hidden_size)
         self.attn = nn.Linear(self.hidden_size * 2, self.max_length)
         self.attn_combine = nn.Linear(self.hidden_size * 2, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size, self.n_layers)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
@@ -143,8 +145,8 @@ class AttnDecoderRNN(nn.Module):
         output = F.log_softmax(self.out(output[0]), dim=1)
         return output, hidden, attn_weights
 
-    def initHidden(self):
-        hidden = torch.zeros(1, 1, self.hidden_size)
+    def init_hidden(self):
+        hidden = torch.zeros(self.n_layers, 1, self.hidden_size)
         if USE_CUDA:
             hidden = hidden.cuda()
         return hidden
