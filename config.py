@@ -6,13 +6,13 @@ MODEL_NAME = 'gru'
 SAVE_DIR = './models'
 DATA_DIR = './data'
 FIG_DIR = './figs'
-MODEL_ADD_NAME = ''
+MODEL_ADD_NAME = '_lr5e-4'
 
 # Configuring training
 n_epochs = 150000
 plot_every = 200
 print_every = 1000
-learning_rate = 0.0001
+learning_rate = 0.0005
 hidden_size = 500
 n_layers = 2
 dropout_p = 0.05
