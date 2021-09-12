@@ -166,7 +166,9 @@ def valid():
     references = []
     for line in tqdm(fin.readlines()):
         output_words = evaluate(normalize_string(line.strip().split('\t')[0]))
-        candidates.append(' '.join(output_words))
+        if output_words[-1] == '<EOS>':
+            output_words = output_words[:-1]
+        candidates.append(' '.join(output_words)) # remove EOS
         references.append(line.strip().split('\t')[1])
     print(len(candidates), len(references))
     for i in range(len(candidates)):
@@ -215,42 +217,42 @@ print_loss_total = 0 # Reset every print_every
 plot_loss_total = 0 # Reset every plot_every
 
 # # Begin!
-for epoch in range(1, n_epochs + 1):
+# for epoch in range(1, n_epochs + 1):
     
-    # Get training data for this cycle
-    training_pair = variables_from_pair(random.choice(pairs), input_lang, output_lang)
-    input_variable = training_pair[0]
-    target_variable = training_pair[1]
+#     # Get training data for this cycle
+#     training_pair = variables_from_pair(random.choice(pairs), input_lang, output_lang)
+#     input_variable = training_pair[0]
+#     target_variable = training_pair[1]
 
-    # Run the train function
-    loss = train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
+#     # Run the train function
+#     loss = train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion)
 
-    # Keep track of loss
-    print_loss_total += loss
-    plot_loss_total += loss
+#     # Keep track of loss
+#     print_loss_total += loss
+#     plot_loss_total += loss
 
-    if epoch == 0: continue
+#     if epoch == 0: continue
 
-    if epoch % print_every == 0:
-        print_loss_avg = print_loss_total / print_every
-        print_loss_total = 0
-        print_summary = '%s (%d %d%%) %.4f' % (time_since(start, epoch / n_epochs), epoch, epoch / n_epochs * 100, print_loss_avg)
-        print(print_summary)
+#     if epoch % print_every == 0:
+#         print_loss_avg = print_loss_total / print_every
+#         print_loss_total = 0
+#         print_summary = '%s (%d %d%%) %.4f' % (time_since(start, epoch / n_epochs), epoch, epoch / n_epochs * 100, print_loss_avg)
+#         print(print_summary)
 
-    if epoch % plot_every == 0:
-        plot_loss_avg = plot_loss_total / plot_every
-        plot_losses.append(plot_loss_avg)
-        plot_loss_total = 0
+#     if epoch % plot_every == 0:
+#         plot_loss_avg = plot_loss_total / plot_every
+#         plot_losses.append(plot_loss_avg)
+#         plot_loss_total = 0
 
-if not os.path.exists(SAVE_DIR):
-    os.mkdir(SAVE_DIR)
-torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME))
-torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME))
+# if not os.path.exists(SAVE_DIR):
+#     os.mkdir(SAVE_DIR)
+# torch.save(encoder.state_dict(), os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME))
+# torch.save(decoder.state_dict(), os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME))
 
-# encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME)))
-# decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME)))
+encoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'encoder_'+MODEL_NAME+MODEL_ADD_NAME)))
+decoder.load_state_dict(torch.load(os.path.join(SAVE_DIR, 'decoder_'+MODEL_NAME+MODEL_ADD_NAME)))
 
-show_plot(plot_losses)
+# show_plot(plot_losses)
 evaluate_randomly()
 valid()
 # test()
